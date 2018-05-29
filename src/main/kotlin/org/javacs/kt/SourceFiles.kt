@@ -8,6 +8,7 @@ import java.io.StringWriter
 import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.PathMatcher
 import java.util.stream.Collectors
 
 private class SourceVersion(val content: String, val version: Int)
@@ -22,7 +23,7 @@ private class NotifySourcePath(private val sp: SourcePath) {
 
     operator fun set(file: Path, source: SourceVersion) {
         val content = convertLineSeparators(source.content)
-        
+
         files[file] = source
         sp.put(file, content)
     }
@@ -97,7 +98,7 @@ class SourceFiles(private val sp: SourcePath) {
     }
 
     private fun readFromDisk(file: Path): SourceVersion? {
-        if (!Files.exists(file)) return null 
+        if (!Files.exists(file)) return null
 
         val content = Files.readAllLines(file).joinToString("\n")
 
@@ -168,7 +169,17 @@ private fun patch(sourceText: String, change: TextDocumentContentChangeEvent): S
 
 private fun findSourceFiles(root: Path): Set<Path> {
     val pattern = FileSystems.getDefault().getPathMatcher("glob:*.{kt,kts}")
-    return Files.walk(root).filter { pattern.matches(it.fileName) } .collect(Collectors.toSet())
+    // TODO: Read excluded folder from gitignore instead
+    // of hardcoding them.
+    var excludes = listOf("bin", "target", "build")
+            .map { root.resolve(it) }
+    return Files.walk(root)
+            .filter { file ->
+                excludes.filter { file.startsWith(it) }
+                        .isEmpty()
+                && pattern.matches(file.fileName)
+            }
+            .collect(Collectors.toSet())
 }
 
 private fun logAdded(sources: Collection<Path>, rootPath: Path?) {
@@ -176,7 +187,7 @@ private fun logAdded(sources: Collection<Path>, rootPath: Path?) {
 }
 
 private fun logRemoved(sources: Collection<Path>, rootPath: Path?) {
-    LOG.info("Removing ${describeFiles(sources)} under $rootPath to source path")
+    LOG.info("Removing ${describeFiles(sources)} under $rootPath from source path")
 }
 
 fun describeFiles(files: Collection<Path>): String {

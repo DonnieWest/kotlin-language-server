@@ -31,7 +31,7 @@ class KotlinTextDocumentService(private val sf: SourceFiles, private val sp: Sou
         val file = Paths.get(URI.create(position.textDocument.uri))
         val content = sp.content(file)
         val offset = offset(content, position.position.line, position.position.character)
-        val compiled = if(recompile) sp.currentVersion(file) else sp.latestCompiledVersion(file)
+        val compiled = if (recompile) sp.currentVersion(file) else sp.latestCompiledVersion(file)
         return Pair(compiled, offset)
     }
 

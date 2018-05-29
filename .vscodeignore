@@ -15,3 +15,12 @@ src/**
 lib/**
 
 .gitignore
+*.code-workspace
+*.gradle
+TODO.md
+BUILDING.md
+
+.project
+.classpath
+.settings/**
+gradle/**
