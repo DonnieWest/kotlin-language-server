@@ -36,7 +36,13 @@ repositories {
 
 dependencies {
 	compile "org.gradle:gradle-tooling-api:4.3"
-	compile 'com.google.guava:guava:23.0'
+
+	// FIXME: Strangely enough tests won't find Guava classes when only LSP4J-Guava is bundled
+	// (whilst the application will run fine) and the application won't find Guava when
+	// it is listed explicitly below (whilst the tests will run fine). This even happens
+	// when the exact same version of Guava is explicitly listed as required by LSP4J...
+
+	// compile 'com.google.guava:guava:[14.0,22) -> 21.0'
 	compile group: 'org.eclipse.lsp4j', name: 'org.eclipse.lsp4j', version: '0.4.1'
 	compile group: 'org.jetbrains.kotlin', name: 'kotlin-stdlib', version: '1.2.31'
 	compile group: 'org.jetbrains.kotlin', name: 'kotlin-compiler', version: '1.2.31'
