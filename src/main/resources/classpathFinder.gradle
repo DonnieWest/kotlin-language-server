@@ -30,11 +30,10 @@ task classpath {
 				}
 			}
 
-			def rjava = proj.getBuildDir().absolutePath + File.separator + "intermediates" + File.separator + "classes" + File.separator + "debug"
-			def rFiles = new File(rjava)
-			if (rFiles.exists()) {
-				classpathFiles += rFiles
-			}
+			def classes = fileTree(dir: proj.getBuildDir().absolutePath + File.separator + "intermediates", include: "**/R.class").files
+      for (Rclass in classes) {
+        classpathFiles += Rclass
+      }
 
 			if (proj.hasProperty("android")) {
 				classpathFiles += proj.android.getBootClasspath()
@@ -72,10 +71,13 @@ task classpath {
 
 			HashSet<String> computedPaths = new HashSet<String>()
 			for (dependency in classpathFiles) {
-				if (dependency.name.endsWith("jar")) {
+				if (dependency.name.endsWith("jar") || dependency.name.endsWith("class") ) {
 					println dependency
 				} else if (dependency != null) {
-					println getBuildCacheForDependency(dependency)
+          def cached = getBuildCacheForDependency(dependency)
+            if (cached != null) {
+              println cached
+            }
 				}
 			}
 		}
