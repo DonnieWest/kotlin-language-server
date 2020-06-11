@@ -16,6 +16,7 @@ allprojects { project ->
 
 						def buildClasses = project.getBuildDir().absolutePath +
 							File.separator + "intermediates" +
+                            File.separator + "javac" +
 							File.separator + variantBase +
 							File.separator + "classes"
 

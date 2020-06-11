@@ -1,13 +1,13 @@
 package org.javacs.kt
 
-import org.jetbrains.kotlin.com.intellij.openapi.util.TextRange
-import org.jetbrains.kotlin.com.intellij.psi.PsiElement
-import org.jetbrains.kotlin.com.intellij.psi.PsiIdentifier
+import java.nio.file.Paths
 import org.javacs.kt.position.changedRegion
 import org.javacs.kt.position.position
 import org.javacs.kt.util.findParent
 import org.javacs.kt.util.nullResult
 import org.javacs.kt.util.toPath
+import org.jetbrains.kotlin.com.intellij.openapi.util.TextRange
+import org.jetbrains.kotlin.com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.container.ComponentProvider
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
 import org.jetbrains.kotlin.lexer.KtTokens
@@ -16,7 +16,6 @@ import org.jetbrains.kotlin.psi.psiUtil.parentsWithSelf
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.scopes.LexicalScope
 import org.jetbrains.kotlin.types.KotlinType
-import java.nio.file.Paths
 
 class CompiledFile(
     val content: String,
@@ -35,7 +34,8 @@ class CompiledFile(
         var cursorExpr = parseAtPoint(cursor, asReference = true)?.findParent<KtExpression>() ?: return nullResult("Couldn't find expression at ${describePosition(cursor)}")
         val surroundingExpr = expandForType(cursor, cursorExpr)
         val scope = scopeAtPoint(cursor) ?: return nullResult("Couldn't find scope at ${describePosition(cursor)}")
-        return typeOfExpression(surroundingExpr, scope)
+        val type = typeOfExpression(surroundingExpr, scope)
+        return type
     }
 
     fun typeOfExpression(expression: KtExpression, scopeWithImports: LexicalScope): KotlinType? =
@@ -48,8 +48,7 @@ class CompiledFile(
         val dotParent = surroundingExpr.parent as? KtDotQualifiedExpression
         if (dotParent != null && dotParent.selectorExpression?.textRange?.contains(cursor) ?: false) {
             return expandForType(cursor, dotParent)
-        }
-        else return surroundingExpr
+        } else return surroundingExpr
     }
 
     fun referenceAtPoint(cursor: Int): Pair<KtExpression, DeclarationDescriptor>? {
@@ -162,7 +161,7 @@ class CompiledFile(
         val oldCursor = oldOffset(cursor)
         return compile.getSliceContents(BindingContext.LEXICAL_SCOPE).asSequence()
                 .filter { it.key.textRange.startOffset <= oldCursor && oldCursor <= it.key.textRange.endOffset }
-                .sortedBy { it.key.textRange.length  }
+                .sortedBy { it.key.textRange.length }
                 .map { it.value }
                 .firstOrNull()
     }

@@ -1,18 +1,16 @@
 package org.javacs.kt.classpath
 
-import org.javacs.kt.LOG
-import org.javacs.kt.util.firstNonNull
-import org.javacs.kt.util.tryResolving
-import org.javacs.kt.util.execAndReadStdoutAndStderr
-import org.javacs.kt.util.KotlinLSException
-import org.javacs.kt.util.isOSWindows
-import org.javacs.kt.util.findCommandOnPath
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import org.javacs.kt.LOG
+import org.javacs.kt.util.KotlinLSException
+import org.javacs.kt.util.execAndReadStdoutAndStderr
+import org.javacs.kt.util.findCommandOnPath
+import org.javacs.kt.util.isOSWindows
 
-internal class GradleClassPathResolver(private val path: Path, private val includeKotlinDSL: Boolean): ClassPathResolver {
+internal class GradleClassPathResolver(private val path: Path, private val includeKotlinDSL: Boolean) : ClassPathResolver {
     override val resolverType: String = "Gradle"
     private val projectDirectory: Path get() = path.getParent()
     override val classpath: Set<Path> get() {
@@ -23,6 +21,7 @@ internal class GradleClassPathResolver(private val path: Path, private val inclu
             .apply { if (isNotEmpty()) LOG.info("Successfully resolved dependencies for '${projectDirectory.fileName}' using Gradle") }
     }
     override val buildScriptClasspath: Set<Path> get() {
+        LOG.info("BUILD SCRIPT CLASSPATH")
         return if (includeKotlinDSL) {
             val scripts = listOf("kotlinDSLClassPathFinder.gradle")
             val tasks = listOf("kotlinLSPKotlinDSLDeps")
@@ -88,7 +87,7 @@ private fun readDependenciesViaGradleCLI(projectDirectory: Path, gradleScripts: 
 
 private fun findGradleCLIDependencies(command: String, projectDirectory: Path): Set<Path>? {
     val (result, errors) = execAndReadStdoutAndStderr(command, projectDirectory)
-    LOG.debug(result)
+    // LOG.debug(result)
     if ("FAILURE: Build failed" in errors) {
         LOG.warn("Gradle task failed: {}", errors.lines().firstOrNull())
     }
@@ -99,7 +98,7 @@ private val artifactPattern by lazy { "kotlin-lsp-gradle (.+)(?:\r?\n)".toRegex(
 private val gradleErrorWherePattern by lazy { "\\*\\s+Where:[\r\n]+(\\S\\.*)".toRegex() }
 
 private fun parseGradleCLIDependencies(output: String): Set<Path>? {
-    LOG.debug(output)
+    // LOG.debug(output)
     val artifacts = artifactPattern.findAll(output)
         .mapNotNull { Paths.get(it.groups[1]?.value) }
         .filterNotNull()

@@ -1,18 +1,15 @@
 package org.javacs.kt
 
-import java.io.PrintWriter
-import java.io.StringWriter
+import java.time.Instant
 import java.util.*
-import java.util.logging.Formatter
-import java.util.logging.LogRecord
 import java.util.logging.Handler
 import java.util.logging.Level
-import java.time.Instant
+import java.util.logging.LogRecord
 import org.javacs.kt.util.DelegatePrintStream
 
 val LOG = Logger()
 
-private class JULRedirector(private val downstream: Logger): Handler() {
+private class JULRedirector(private val downstream: Logger) : Handler() {
     override fun publish(record: LogRecord) {
         when (record.level) {
             Level.SEVERE -> downstream.error(record.message)
@@ -59,7 +56,7 @@ class Logger {
 
     private val newline = System.lineSeparator()
     val logTime = false
-    var level = LogLevel.INFO
+    var level = LogLevel.ALL
 
     fun logError(msg: LogMessage) {
         if (errBackend == null) {

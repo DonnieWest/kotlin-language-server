@@ -1,19 +1,18 @@
 package org.javacs.kt
 
+import java.net.URI
+import java.nio.file.Path
+import java.nio.file.Paths
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
+import org.javacs.kt.util.describeURI
 import org.javacs.kt.util.fileExtension
 import org.javacs.kt.util.filePath
-import org.javacs.kt.util.describeURI
 import org.jetbrains.kotlin.com.intellij.lang.Language
-import org.jetbrains.kotlin.com.intellij.psi.PsiFile
 import org.jetbrains.kotlin.container.ComponentProvider
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.CompositeBindingContext
-import kotlin.concurrent.withLock
-import java.nio.file.Path
-import java.nio.file.Paths
-import java.net.URI
-import java.util.concurrent.locks.ReentrantLock
 
 class SourcePath(
     private val cp: CompilerClassPath,
@@ -166,6 +165,7 @@ class SourcePath(
     fun compileFiles(all: Collection<URI>): BindingContext {
         // Figure out what has changed
         val sources = all.map { files[it]!! }
+
         val allChanged = sources.filter { it.content != it.compiledFile?.text }
         val (changedBuildScripts, changedSources) = allChanged.partition { it.kind == CompilationKind.BUILD_SCRIPT }
 
@@ -181,7 +181,7 @@ class SourcePath(
             for ((f, parsed) in parse) {
                 parseDataWriteLock.withLock {
                     if (f.parsed == parsed) {
-                        //only updated if the parsed file didn't change:
+                        // only updated if the parsed file didn't change:
                         f.compiledFile = parsed
                         f.compiledContext = context
                         f.compiledContainer = container

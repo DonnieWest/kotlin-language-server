@@ -1,31 +1,33 @@
 package org.javacs.kt.completion
 
 import com.google.common.cache.CacheBuilder
+import java.util.concurrent.TimeUnit
 import org.eclipse.lsp4j.CompletionItem
 import org.eclipse.lsp4j.CompletionItemKind
 import org.eclipse.lsp4j.CompletionList
 import org.javacs.kt.CompiledFile
-import org.javacs.kt.LOG
 import org.javacs.kt.CompletionConfiguration
 import org.javacs.kt.util.containsCharactersInOrder
 import org.javacs.kt.util.findParent
 import org.javacs.kt.util.noResult
 import org.javacs.kt.util.stringDistance
 import org.javacs.kt.util.toPath
+import org.javacs.kt.LOG
 import org.javacs.kt.util.onEachIndexed
+import org.javacs.kt.util.toPath
 import org.jetbrains.kotlin.container.get
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.js.resolve.diagnostics.findPsi
+import org.jetbrains.kotlin.lexer.KtKeywordToken
+import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.load.java.descriptors.JavaMethodDescriptor
 import org.jetbrains.kotlin.load.java.sources.JavaSourceElement
 import org.jetbrains.kotlin.load.java.structure.JavaMethod
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.*
-import org.jetbrains.kotlin.psi.psiUtil.parentsWithSelf
 import org.jetbrains.kotlin.psi.psiUtil.*
-import org.jetbrains.kotlin.lexer.KtTokens
-import org.jetbrains.kotlin.lexer.KtKeywordToken
+import org.jetbrains.kotlin.psi.psiUtil.parentsWithSelf
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.DescriptorUtils
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
@@ -39,13 +41,11 @@ import org.jetbrains.kotlin.resolve.scopes.getDescriptorsFiltered
 import org.jetbrains.kotlin.resolve.scopes.utils.parentsWithSelf
 import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.types.TypeUtils
-import org.jetbrains.kotlin.types.typeUtil.supertypes
-import org.jetbrains.kotlin.types.typeUtil.replaceArgumentsWithStarProjections
 import org.jetbrains.kotlin.types.checker.KotlinTypeChecker
-import java.util.concurrent.TimeUnit
+import org.jetbrains.kotlin.types.typeUtil.replaceArgumentsWithStarProjections
 
 // The maxmimum number of completion items
-private const val MAX_COMPLETION_ITEMS = 75
+private const val MAX_COMPLETION_ITEMS = 500
 
 // The minimum length after which completion lists are sorted
 private const val MIN_SORT_LENGTH = 3
@@ -93,9 +93,9 @@ private val callPattern = Regex("(.*)\\((?:\\$\\d+)?\\)(?:\\$0)?")
 private val methodSignature = Regex("""(?:fun|constructor) (?:<(?:[a-zA-Z\?\!\: ]+)(?:, [A-Z])*> )?([a-zA-Z]+\(.*\))""")
 
 private fun completionItem(d: DeclarationDescriptor, surroundingElement: KtElement, file: CompiledFile, config: CompletionConfiguration): CompletionItem {
-    val renderWithSnippets = config.snippets.enabled
-        && surroundingElement !is KtCallableReferenceExpression
-        && surroundingElement !is KtImportDirective
+    val renderWithSnippets = config.snippets.enabled &&
+        surroundingElement !is KtCallableReferenceExpression &&
+        surroundingElement !is KtImportDirective
     val result = d.accept(RenderCompletionItem(renderWithSnippets), null)
 
     result.label = methodSignature.find(result.detail)?.groupValues?.get(1) ?: result.label
@@ -252,7 +252,7 @@ private fun completeMembers(file: CompiledFile, cursor: Int, receiverExpr: KtExp
                 expressionType
             } else expressionType
 
-            LOG.debug("Completing members of instance '{}'", receiverType)
+            LOG.error("Completing members of instance '{}'", receiverType)
             val members = receiverType.memberScope.getContributedDescriptors().asSequence()
             val extensions = extensionFunctions(lexicalScope).filter { isExtensionFor(receiverType, it) }
             descriptors = members + extensions
@@ -366,6 +366,32 @@ private fun name(d: DeclarationDescriptor): String {
         return d.name.identifier
 }
 
+fun containsCharactersInOrder(
+    candidate: CharSequence,
+    pattern: CharSequence,
+    caseSensitive: Boolean
+): Boolean {
+    var iCandidate = 0
+    var iPattern = 0
+
+    while (iCandidate < candidate.length && iPattern < pattern.length) {
+        var patternChar = pattern[iPattern]
+        var testChar = candidate[iCandidate]
+
+        if (!caseSensitive) {
+            patternChar = Character.toLowerCase(patternChar)
+            testChar = Character.toLowerCase(testChar)
+        }
+
+        if (patternChar == testChar) {
+            iPattern++
+            iCandidate++
+        } else iCandidate++
+    }
+
+    return iPattern == pattern.length
+}
+
 private fun isVisible(file: CompiledFile, cursor: Int): (DeclarationDescriptor) -> Boolean {
     val el = file.elementAtPoint(cursor) ?: return { true }
     val from = el.parentsWithSelf
@@ -434,8 +460,8 @@ private fun isParentClass(declaration: DeclarationDescriptor): ClassDescriptor? 
 
 private fun isExtensionFor(type: KotlinType, extensionFunction: CallableDescriptor): Boolean {
     val receiverType = extensionFunction.extensionReceiverParameter?.type?.replaceArgumentsWithStarProjections() ?: return false
-    return KotlinTypeChecker.DEFAULT.isSubtypeOf(type, receiverType)
-        || (TypeUtils.getTypeParameterDescriptorOrNull(receiverType)?.isGenericExtensionFor(type) ?: false)
+    return KotlinTypeChecker.DEFAULT.isSubtypeOf(type, receiverType) ||
+        (TypeUtils.getTypeParameterDescriptorOrNull(receiverType)?.isGenericExtensionFor(type) ?: false)
 }
 
 private fun TypeParameterDescriptor.isGenericExtensionFor(type: KotlinType): Boolean =
@@ -446,7 +472,7 @@ private val loggedHidden = CacheBuilder.newBuilder().expireAfterWrite(1, TimeUni
 private fun logHidden(target: DeclarationDescriptor, from: DeclarationDescriptor) {
     val key = Pair(from.name, target.name)
 
-    loggedHidden.get(key, { doLogHidden(target, from )})
+    loggedHidden.get(key, { doLogHidden(target, from) })
 }
 
 private fun doLogHidden(target: DeclarationDescriptor, from: DeclarationDescriptor) {

@@ -25,6 +25,8 @@ repositories {
     maven { url 'https://repo.gradle.org/gradle/libs-releases' }
     maven { url uri("$projectDir/lib") }
     mavenCentral()
+    jcenter()
+    gradlePluginPortal()
     teamcityServer {
         url = teamCityUrl
         credentials {
@@ -53,6 +55,7 @@ dependencies {
     implementation 'com.pinterest.ktlint:ktlint-core:0.34.2'
     implementation 'com.pinterest.ktlint:ktlint-ruleset-standard:0.34.2'
     implementation 'com.beust:jcommander:1.78'
+    implementation 'org.jetbrains.kotlin:kotlin-sam-with-receiver'
 
     // Re-add to depend on Kotlin plugin classes directly. Note that
     // this plugin uses the normal imports (com.intellij.*)
